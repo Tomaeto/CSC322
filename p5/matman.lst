@@ -1,0 +1,95 @@
+     1                                  ; Adrian Faircloth
+     2                                  ; 10/8/2020
+     3                                  ; Program 5: Matrix Management
+     4                                  ; Creates a matrix of data, sums the rows and columns, and calcs a total sum
+     5                                  
+     6                                  ;;;;;;;;;;;;;;;;;;;;;;;; TEST CASE 1 ;;;;;;;;;;;;;;;;;;;;;;;;;
+     7                                  ROWS:        EQU    5   ; defines a constant ROWS set to 5.
+     8                                  COLS:      EQU    7    ; defines a constant COLS set to 7.
+     9                                  loopPointer:	EQU	0
+    10                                  sumPointer:	EQU	0
+    11                                  SECTION .data
+    12 00000000 010000000200000003-     MyMatrix:     dd     1,  2,  3,  4,  5,  6,  7
+    13 00000009 000000040000000500-
+    14 00000012 000006000000070000-
+    15 0000001B 00                 
+    16 0000001C 08000000090000000A-                   dd     8,  9, 10, 11, 12, 13, 14
+    17 00000025 0000000B0000000C00-
+    18 0000002E 00000D0000000E0000-
+    19 00000037 00                 
+    20 00000038 0F0000001000000011-                   dd    15, 16, 17, 18, 19, 20, 21
+    21 00000041 000000120000001300-
+    22 0000004A 000014000000150000-
+    23 00000053 00                 
+    24 00000054 160000001700000018-                   dd    22, 23, 24, 25, 26, 27, 28
+    25 0000005D 000000190000001A00-
+    26 00000066 00001B0000001C0000-
+    27 0000006F 00                 
+    28 00000070 1D0000001E0000001F-                   dd    29, 30, 31, 32, 33, 34, 35
+    29 00000079 000000200000002100-
+    30 00000082 000022000000230000-
+    31 0000008B 00                 
+    32 0000008C 00000000                ecxHolder:	dd	0	; variable for holding ecx register value
+    33 00000090 00000000                colCounter:	dd	0	; variable for tracking number of columns summed
+    34                                  SECTION .bss
+    35 00000000 <res 00000014>          RowSums:    RESD ROWS
+    36 00000014 <res 0000001C>          ColSums:    RESD COLS
+    37 00000030 <res 00000004>          Sum:        RESD 1
+    38                                  
+    39                                  SECTION .text
+    40                                  global _main
+    41                                  _main:
+    42                                  	
+    43 00000000 31C0                    	xor eax, eax
+    44 00000002 B905000000              	mov  ecx, ROWS
+    45                                  rowLoop1:
+    46                                  
+    47 00000007 31DB                    	xor ebx, ebx
+    48 00000009 890D[8C000000]          	mov [ecxHolder], ecx
+    49 0000000F B907000000              	mov ecx, COLS
+    50                                  rowLoop2:
+    51                                  
+    52 00000014 039A[00000000]          	add ebx, [MyMatrix+edx]
+    53 0000001A 83C204                  	add edx, 4
+    54 0000001D E2F5                    loop rowLoop2
+    55                                  	
+    56 0000001F 011D[30000000]          	add [Sum], ebx
+    57 00000025 8998[00000000]          	mov [RowSums+eax], ebx
+    58 0000002B 83C004                  	add eax, 4
+    59 0000002E 8B0D[8C000000]          	mov ecx, [ecxHolder]
+    60                                  
+    61 00000034 E2D1                    loop rowLoop1
+    62                                  
+    63 00000036 31C0                    	xor eax, eax
+    64 00000038 31D2                    	xor edx, edx
+    65 0000003A B907000000              	mov ecx, COLS
+    66                                  
+    67                                  colLoop1:
+    68                                  	
+    69 0000003F 31DB                    	xor ebx, ebx
+    70 00000041 890D[8C000000]          	mov [ecxHolder], ecx
+    71 00000047 B905000000              	mov ecx, ROWS
+    72 0000004C 8B15[90000000]          	mov edx, [colCounter]
+    73                                  
+    74                                  colLoop2:
+    75                                  
+    76 00000052 039A[00000000]          	add ebx, [MyMatrix+edx]
+    77 00000058 83C21C                  	add edx, COLS*4
+    78                                  	
+    79                                  
+    80 0000005B E2F5                    loop colLoop2
+    81                                  	
+    82                                  
+    83 0000005D 8998[14000000]          	mov [ColSums+eax], ebx
+    84 00000063 83C004                  	add eax, 4
+    85 00000066 8305[90000000]04        	add [colCounter],DWORD 4
+    86 0000006D 8B0D[8C000000]          	mov ecx, [ecxHolder]
+    87                                  
+    88 00000073 E2CA                    loop colLoop1
+    89                                  
+    90                                  lastBreak:
+    91                                  ; Normal termination code
+    92 00000075 B801000000              mov eax, 1
+    93 0000007A BB00000000              mov ebx, 0
+    94 0000007F CD80                    int 80h
+    95                                              
