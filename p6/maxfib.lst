@@ -1,0 +1,35 @@
+     1                                  ; Adrian Faircloth
+     2                                  ; 10/18/2020
+     3                                  ; Program 6: Max Fibonacci
+     4                                  ; Creates a DWORD and adds in fibonacci vals to max possible DWord value
+     5                                  
+     6                                  SECTION .data
+     7                                  ; define data/variables here.  Think DB, DW, DD, DQ
+     8 00000000 01000000                prevFib:	dd	1	;Value for storing previous value in sequence
+     9                                  
+    10                                  SECTION .bss
+    11 00000000 <res 00000004>          MaxFib:	RESD	1	;Reserving DWORD for max fibonacci value
+    12                                  
+    13                                  SECTION .text
+    14                                  global _main
+    15                                  _main:
+    16                                  	
+    17 00000000 8305[00000000]01        	add DWORD[MaxFib], 1	;putting first fibonacci value into MaxFib to start sequence
+    18                                  
+    19                                  WhileNotMax:
+    20                                  
+    21 00000007 A1[00000000]            	mov eax, [MaxFib]	;moving current fib value into reg for adding
+    22 0000000C 8B1D[00000000]          	mov ebx, [prevFib]	;moving previous fib value into reg for adding
+    23 00000012 A3[00000000]            	mov [prevFib], eax	;moving current fib value into prevFib for next loop
+    24 00000017 01D8                    	add eax, ebx		;adding current and previous fib values
+    25 00000019 A3[00000000]            	mov [MaxFib], eax	;moving sum of fib values into memory for next loop
+    26 0000001E 73E7                    	jnc WhileNotMax		;loops previous code until fib value exceeds 32 bits
+    27 00000020 A1[00000000]            	mov eax, [prevFib]	;moves max unsigned 32-bit fib value into register
+    28 00000025 A3[00000000]            	mov [MaxFib], eax	;moves max unsigned 32-bit fib value into MaxFib variable
+    29                                  
+    30                                  lastBreak:
+    31                                  ; Normal termination code
+    32 0000002A B801000000              mov eax, 1
+    33 0000002F BB00000000              mov ebx, 0
+    34 00000034 CD80                    int 80h
+    35                                              
