@@ -1,0 +1,173 @@
+     1                                  ; Adrian Faircloth
+     2                                  ; 11/04/2020
+     3                                  ; Project 8: Bounce
+     4                                  ; Allows message of up to 78 chars to bounce horizontally across the screen
+     5                                  
+     6                                  ;; Macro for printing messages
+     7                                  ;; Pass starting address and length
+     8                                  %macro	Print 2
+     9                                  	
+    10                                  	mov	eax, 4
+    11                                  	mov	ebx, 1
+    12                                  	mov	ecx, %1
+    13                                  	mov	edx, %2
+    14                                  	
+    15                                  	int	80h
+    16                                  %endmacro
+    17                                  
+    18                                  ;; Macro for processing row and col parameters
+    19                                  ;; Pass row and col as immediate vals
+    20                                  %macro	setCursor 2
+    21                                  ;; Putting row and col vals into ah and al respectively
+    22                                  	mov	ah, %1
+    23                                  	mov	al, %2
+    24                                  	push	eax
+    25                                  ;; Process row
+    26                                  	shr	ax, 8
+    27                                  	mov	bl, 10
+    28                                  	div	bl	;; Puts ax/10 into al, remainder in ah
+    29                                  	add	ah, '0' ;; Converts param vals into characters
+    30                                  	add	al, '0'
+    31                                  	mov	BYTE[row], al
+    32                                  	mov	BYTE[row+1], ah
+    33                                  ;; Process column
+    34                                  	pop	eax      ;; Restore parameters
+    35                                  	and 	ax, 0FFh ;; Erases ah, leaving al w/ col value
+    36                                  	mov	bl, 10
+    37                                  	div	bl
+    38                                  	add	ah, '0'
+    39                                  	add	al, '0'
+    40                                  	mov	BYTE[col], al
+    41                                  	mov	BYTE[col+1], ah
+    42                                  %endmacro
+    43                                  SECTION .data
+    44                                  ;; data struct for message
+    45 00000000 20                      message:   db    " "  ;;; one space
+    46 00000001 4920656E6A6F792041-            	   db    "I enjoy Assembly programming :)"
+    47 0000000A 7373656D626C792070-
+    48 00000013 726F6772616D6D696E-
+    49 0000001C 67203A29           
+    50 00000020 20                             	   db    " "  ;;; one more space
+    51                                  msglen:    EQU    ($-message)
+    52                                  
+    53 00000021 1B5B324A                clr        db 1bh,'[2J'   ;; clear screen string
+    54 00000025 0000000080C3C901        seconds:   dd 0, 30000000 ;; seconds, nanoseconds
+    55                                  ;; Set cursor position control chars
+    56 0000002D 1B5B                    pos     db      1bh, '['
+    57 0000002F 3030                    row     db      '00'
+    58 00000031 3B                              db      ';'
+    59 00000032 3030                    col     db      '00'
+    60 00000034 48                              db      'H'
+    61                                  
+    62 00000035 00                      colCount: db	0	;; Tracks starting column for message
+    63                                  SECTION .bss
+    64                                  ; define uninitiialized data here
+    65                                  
+    66                                  SECTION .text
+    67                                  global _main, _clrscr, _pause, _cursor
+    68                                  _main:
+    69 00000000 E875000000              	call	_clrscr
+    70                                  bounce:	;; Infinite loop for BOUNCE
+    71                                  ;; Setting up ecx w/ number of empty spaces after end of msg
+    72 00000005 31C9                    	xor	ecx, ecx
+    73 00000007 B150                    	mov	cl, 80
+    74 00000009 2A0D[35000000]          	sub	cl, BYTE[colCount]
+    75 0000000F 80E921                  	sub	cl, msglen
+    76                                  incCol:	;; Loop for increasing starting col until end of msg hits col 80
+    77 00000012 51                      	push	ecx
+    78 00000013 E88F000000              	call	_cursor
+    79                                  	Print	message, msglen
+    80                              <1> 
+    81 00000018 B804000000          <1>  mov eax, 4
+    82 0000001D BB01000000          <1>  mov ebx, 1
+    83 00000022 B9[00000000]        <1>  mov ecx, %1
+    84 00000027 BA21000000          <1>  mov edx, %2
+    85                              <1> 
+    86 0000002C CD80                <1>  int 80h
+    87 0000002E E860000000              	call	_pause
+    88 00000033 FE05[35000000]          	inc	BYTE[colCount]
+    89 00000039 59                      	pop	ecx
+    90 0000003A E2D6                    	loop	incCol
+    91 0000003C 8A0D[35000000]          	mov	cl, [colCount]	;; Sets ecx to # of starting col increases
+    92                                  decCol:	;; Loop for decreasing starting col back to 0
+    93 00000042 51                      	push	ecx
+    94 00000043 E85F000000              	call	_cursor
+    95                                  	Print	message, msglen
+    96                              <1> 
+    97 00000048 B804000000          <1>  mov eax, 4
+    98 0000004D BB01000000          <1>  mov ebx, 1
+    99 00000052 B9[00000000]        <1>  mov ecx, %1
+   100 00000057 BA21000000          <1>  mov edx, %2
+   101                              <1> 
+   102 0000005C CD80                <1>  int 80h
+   103 0000005E E830000000              	call	_pause
+   104 00000063 FE0D[35000000]          	dec	BYTE[colCount]
+   105 00000069 59                      	pop	ecx
+   106 0000006A E2D6                    	loop	decCol
+   107 0000006C EB97                    	jmp	bounce	;; infinitely looping BOUNCE
+   108                                  	
+   109                                  ; Normal termination code
+   110 0000006E B801000000              mov eax, 1
+   111 00000073 BB00000000              mov ebx, 0
+   112 00000078 CD80                    int 80h
+   113                                  
+   114                                  ;;;;;;;;;;;;;;;;;;; END OF MAIN ;;;;;;;;;;;;;;;;;;;;;;;;
+   115                                  ;; Function for clearing screen
+   116                                  _clrscr:
+   117 0000007A 60                      	pusha
+   118                                  	Print clr, 4
+   119                              <1> 
+   120 0000007B B804000000          <1>  mov eax, 4
+   121 00000080 BB01000000          <1>  mov ebx, 1
+   122 00000085 B9[21000000]        <1>  mov ecx, %1
+   123 0000008A BA04000000          <1>  mov edx, %2
+   124                              <1> 
+   125 0000008F CD80                <1>  int 80h
+   126 00000091 61                      	popa
+   127 00000092 C3                      	ret
+   128                                  
+   129                                  ;; Function to pause for about 1/10 second
+   130                                  _pause:
+   131 00000093 60                      	pusha
+   132 00000094 B8A2000000              	mov	eax, 162
+   133 00000099 BB[25000000]            	mov	ebx, seconds
+   134 0000009E B900000000              	mov	ecx, 0
+   135 000000A3 CD80                    	int	80h
+   136 000000A5 61                      	popa
+   137 000000A6 C3                      	ret
+   138                                  
+   139                                  ;; Function for setting cursor position
+   140                                  _cursor:
+   141 000000A7 60                      	pusha
+   142                                  	setCursor 10, [colCount] ;; Sets cursor control based on starting col
+   143                              <1> 
+   144 000000A8 B40A                <1>  mov ah, %1
+   145 000000AA A0[35000000]        <1>  mov al, %2
+   146 000000AF 50                  <1>  push eax
+   147                              <1> 
+   148 000000B0 66C1E808            <1>  shr ax, 8
+   149 000000B4 B30A                <1>  mov bl, 10
+   150 000000B6 F6F3                <1>  div bl
+   151 000000B8 80C430              <1>  add ah, '0'
+   152 000000BB 0430                <1>  add al, '0'
+   153 000000BD A2[2F000000]        <1>  mov BYTE[row], al
+   154 000000C2 8825[30000000]      <1>  mov BYTE[row+1], ah
+   155                              <1> 
+   156 000000C8 58                  <1>  pop eax
+   157 000000C9 6625FF00            <1>  and ax, 0FFh
+   158 000000CD B30A                <1>  mov bl, 10
+   159 000000CF F6F3                <1>  div bl
+   160 000000D1 80C430              <1>  add ah, '0'
+   161 000000D4 0430                <1>  add al, '0'
+   162 000000D6 A2[32000000]        <1>  mov BYTE[col], al
+   163 000000DB 8825[33000000]      <1>  mov BYTE[col+1], ah
+   164                                  	Print	pos, 8		 ;; Prints cursor control characters
+   165                              <1> 
+   166 000000E1 B804000000          <1>  mov eax, 4
+   167 000000E6 BB01000000          <1>  mov ebx, 1
+   168 000000EB B9[2D000000]        <1>  mov ecx, %1
+   169 000000F0 BA08000000          <1>  mov edx, %2
+   170                              <1> 
+   171 000000F5 CD80                <1>  int 80h
+   172 000000F7 61                      	popa
+   173 000000F8 C3                      	ret
