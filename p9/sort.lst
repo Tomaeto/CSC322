@@ -1,7 +1,7 @@
      1                                  ; Adrian Faircloth
      2                                  ; 11/09/2020
      3                                  ; Project 9: Sort
-     4                                  ; Sorts an array of unsigned byte values and prints the array
+     4                                  ; Sorts an array of unsigned byte values, prints both original and sorted arrays
      5                                  
      6                                  ;; Macro for printing
      7                                  ;; Pass pointer to start of string and length of string
@@ -17,17 +17,17 @@
     17                                  
     18                                  SECTION .data
     19                                  ; define data/variables here.  Think DB, DW, DD, DQ
-    20 00000000 64C8050A005816          nums: 		db      100, 200, 5, 10, 0, 88, 22 ; Array to be sorted
+    20 00000000 FF64C8050A00581640      nums: 		db     255, 100, 200, 5, 10, 0, 88, 22, 64 ; Array to be sorted
     21                                  numslen:   	EQU     ($-nums)	  ; Length of array
-    22 00000007 202020                  printField:	db	"   "	 	  ; Stores converted value
-    23 0000000A 1B5B324A                clr             db 	1bh,'[2J'	  ; Clear screen string
-    24 0000000E 64                      hundred:	db	100		 
-    25 0000000F 0A                      ten:		db	10
-    26 00000010 4F726967696E616C20-     unsortHeader:	db	"Original Array:" ; Header for unsorted array
-    27 00000019 41727261793A       
+    22 00000009 202020                  printField:	db	"   "	 	  ; Stores converted value
+    23 0000000C 1B5B324A                clr             db 	1bh,'[2J'	  ; Clear screen string
+    24 00000010 64                      hundred:	db	100		 
+    25 00000011 0A                      ten:		db	10
+    26 00000012 4F726967696E616C20-     unsortHeader:	db	"Original Array:" ; Header for unsorted array
+    27 0000001B 41727261793A       
     28                                  header1len:	EQU	($-unsortHeader)  ; Length of above header
-    29 0000001F 536F72746564204172-     sortHeader:	db	"Sorted Array:"   ; Header for sorted array
-    30 00000028 7261793A           
+    29 00000021 536F72746564204172-     sortHeader:	db	"Sorted Array:"   ; Header for sorted array
+    30 0000002A 7261793A           
     31                                  header2len:	EQU	($-sortHeader)	  ; Length of above header
     32                                  SECTION .bss
     33                                  ; define uninitialized data here
@@ -39,7 +39,7 @@
     39 00000000 60                  <1>  pusha
     40 00000001 B804000000          <1>  mov eax, 4
     41 00000006 BB01000000          <1>  mov ebx, 1
-    42 0000000B B9[0A000000]        <1>  mov ecx, %1
+    42 0000000B B9[0C000000]        <1>  mov ecx, %1
     43 00000010 BA04000000          <1>  mov edx, %2
     44 00000015 CD80                <1>  int 80h
     45 00000017 61                  <1>  popa
@@ -47,7 +47,7 @@
     47 00000018 60                  <1>  pusha
     48 00000019 B804000000          <1>  mov eax, 4
     49 0000001E BB01000000          <1>  mov ebx, 1
-    50 00000023 B9[10000000]        <1>  mov ecx, %1
+    50 00000023 B9[12000000]        <1>  mov ecx, %1
     51 00000028 BA0F000000          <1>  mov edx, %2
     52 0000002D CD80                <1>  int 80h
     53 0000002F 61                  <1>  popa
@@ -55,121 +55,117 @@
     55 00000030 60                  <1>  pusha
     56 00000031 B804000000          <1>  mov eax, 4
     57 00000036 BB01000000          <1>  mov ebx, 1
-    58 0000003B B9[0F000000]        <1>  mov ecx, %1
+    58 0000003B B9[11000000]        <1>  mov ecx, %1
     59 00000040 BA01000000          <1>  mov edx, %2
     60 00000045 CD80                <1>  int 80h
     61 00000047 61                  <1>  popa
     62 00000048 E86F000000              	call	_printArray		 ;; Printing unsorted array
-    63                                  	
-    64 0000004D E8B1000000              	call	_sort
-    65                                  	Print	sortHeader, header2len
-    66 00000052 60                  <1>  pusha
-    67 00000053 B804000000          <1>  mov eax, 4
-    68 00000058 BB01000000          <1>  mov ebx, 1
-    69 0000005D B9[1F000000]        <1>  mov ecx, %1
-    70 00000062 BA0D000000          <1>  mov edx, %2
-    71 00000067 CD80                <1>  int 80h
-    72 00000069 61                  <1>  popa
-    73                                  	Print	ten, 1
-    74 0000006A 60                  <1>  pusha
-    75 0000006B B804000000          <1>  mov eax, 4
-    76 00000070 BB01000000          <1>  mov ebx, 1
-    77 00000075 B9[0F000000]        <1>  mov ecx, %1
-    78 0000007A BA01000000          <1>  mov edx, %2
-    79 0000007F CD80                <1>  int 80h
-    80 00000081 61                  <1>  popa
-    81 00000082 E835000000              	call	_printArray
-    82                                  lastBreak:
-    83                                  
-    84                                  ; Normal termination code
-    85 00000087 B801000000              mov eax, 1
-    86 0000008C BB00000000              mov ebx, 0
-    87 00000091 CD80                    int 80h
+    63 0000004D E8B1000000              	call	_sort			 ;; Sorting array
+    64                                  	Print	sortHeader, header2len	 ;; Printing header for sorted array
+    65 00000052 60                  <1>  pusha
+    66 00000053 B804000000          <1>  mov eax, 4
+    67 00000058 BB01000000          <1>  mov ebx, 1
+    68 0000005D B9[21000000]        <1>  mov ecx, %1
+    69 00000062 BA0D000000          <1>  mov edx, %2
+    70 00000067 CD80                <1>  int 80h
+    71 00000069 61                  <1>  popa
+    72                                  	Print	ten, 1			 ;; Move cursor to next line
+    73 0000006A 60                  <1>  pusha
+    74 0000006B B804000000          <1>  mov eax, 4
+    75 00000070 BB01000000          <1>  mov ebx, 1
+    76 00000075 B9[11000000]        <1>  mov ecx, %1
+    77 0000007A BA01000000          <1>  mov edx, %2
+    78 0000007F CD80                <1>  int 80h
+    79 00000081 61                  <1>  popa
+    80 00000082 E835000000              	call	_printArray		 ;; Printing sorted array
+    81                                  lastBreak:
+    82                                  
+    83                                  ; Normal termination code
+    84 00000087 B801000000              mov eax, 1
+    85 0000008C BB00000000              mov ebx, 0
+    86 00000091 CD80                    int 80h
+    87                                  
     88                                  
     89                                  
-    90                                  
-    91                                  ;;;;;;;;;;;;;;;;;END OF MAIN;;;;;;;;;;;;;;;;;;
-    92                                  ;; Function for converting literal byte values into characters
-    93                                  ;; Returns value with 3 digits, leading zeros if applicable
-    94                                  ;; Value to be converted expected in al register
-    95                                  _convNum:
-    96 00000093 60                      	pusha
-    97 00000094 30E4                    	xor	ah, ah
-    98 00000096 BB[07000000]            	mov	ebx, printField	;; Puts pointer to printField in ebx
-    99 0000009B F635[0E000000]          	div	BYTE[hundred]	;; Divides al by 100 to get 1st digit
-   100 000000A1 0430                    	add	al, '0'		;; Converts quotient to character
-   101 000000A3 8803                    	mov	[ebx], al	;; Moves character to first spot of printField
-   102 000000A5 43                      	inc	ebx		;; Moves pointer in ebx to next space
-   103 000000A6 66C1E808                	shr	ax, 8		;; Shifts ax so remainder is in al
-   104 000000AA F635[0F000000]          	div	BYTE[ten]	;; Divides al by 10 to get 2nd digit
-   105 000000B0 0430                    	add	al, '0'		;; Converts quotient to character
-   106 000000B2 8803                    	mov	[ebx], al	;; Moves character to 2nd spot of printField
-   107 000000B4 80C430                  	add	ah, '0'		;; Converts remaining 3rd digit to character
-   108 000000B7 43                      	inc	ebx		;; Moves pointer in ebx to next space
-   109 000000B8 8823                    	mov	[ebx], ah	;; Moves character to 3rd spot of printField
-   110 000000BA 61                      	popa
-   111 000000BB C3                      	ret
-   112                                  
-   113                                  ;; Function for printing array of byte values, one per line
-   114                                  _printArray:
-   115 000000BC 60                      	pusha
-   116 000000BD BB[00000000]            	mov	ebx, nums
-   117 000000C2 B907000000              	mov	ecx, numslen
-   118                                  printArrayLoop:		        ;; Printing each value in array
-   119 000000C7 8B03                    	mov	eax, [ebx]	;; Setting al for _convNum call
-   120 000000C9 E8C5FFFFFF              	call	_convNum
-   121                                  	Print	printField, 3   ;; Printing converted value
-   122 000000CE 60                  <1>  pusha
-   123 000000CF B804000000          <1>  mov eax, 4
-   124 000000D4 BB01000000          <1>  mov ebx, 1
-   125 000000D9 B9[07000000]        <1>  mov ecx, %1
-   126 000000DE BA03000000          <1>  mov edx, %2
-   127 000000E3 CD80                <1>  int 80h
-   128 000000E5 61                  <1>  popa
-   129 000000E6 43                      	inc	ebx	        ;; Setting pointer to move to next val in array
-   130                                  	Print	ten, 1	        ;; Moving cursor to next line
-   131 000000E7 60                  <1>  pusha
-   132 000000E8 B804000000          <1>  mov eax, 4
-   133 000000ED BB01000000          <1>  mov ebx, 1
-   134 000000F2 B9[0F000000]        <1>  mov ecx, %1
-   135 000000F7 BA01000000          <1>  mov edx, %2
-   136 000000FC CD80                <1>  int 80h
-   137 000000FE 61                  <1>  popa
-   138 000000FF E2C6                    	loop printArrayLoop
-   139 00000101 61                      	popa
-   140 00000102 C3                      	ret	
-   141                                  
-   142                                  ;; Function for sorting an array of byte values
-   143                                  _sort:
-   144 00000103 60                      	pusha
-   145 00000104 B907000000              	mov	ecx, numslen
-   146 00000109 49                      	dec	ecx
-   147 0000010A B807000000              	mov	eax, numslen
-   148 0000010F F7E1                    	mul	ecx
-   149 00000111 B902000000              	mov	ecx, 2
-   150 00000116 F7F1                    	div	ecx
-   151 00000118 89C1                    	mov	ecx, eax
-   152                                  	
-   153                                  sortLoop:
-   154 0000011A 51                      	push	ecx
-   155 0000011B BB[00000000]            	mov	ebx, nums
-   156 00000120 B907000000              	mov	ecx, numslen
-   157 00000125 49                      	dec	ecx
-   158 00000126 31C0                    	xor	eax, eax
-   159 00000128 31D2                    	xor	edx, edx
-   160                                  sortVals:
-   161 0000012A 8A03                    	mov	al, [ebx]
-   162 0000012C 8A5301                  	mov	dl, [ebx+1]	
-   163 0000012F 39D0                    	cmp	eax, edx
-   164 00000131 7E02                    	jng	skipXchg
-   165 00000133 86C2                    	xchg	al, dl
-   166                                  skipXchg:	
-   167 00000135 8803                    	mov	[ebx], al
-   168 00000137 885301                  	mov	[ebx+1], dl
-   169 0000013A 43                      	inc	ebx
-   170 0000013B E2ED                    	loop	sortVals
-   171 0000013D 59                      	pop	ecx
-   172 0000013E E2DA                    	loop	sortLoop
-   173                                  	
-   174 00000140 61                      	popa
-   175 00000141 C3                      	ret
+    90                                  ;;;;;;;;;;;;;;;;;END OF MAIN;;;;;;;;;;;;;;;;;;
+    91                                  ;; Function for converting literal byte values into characters
+    92                                  ;; Returns value with 3 digits, leading zeros if applicable
+    93                                  ;; Value to be converted expected in al register
+    94                                  _convNum:
+    95 00000093 60                      	pusha
+    96 00000094 30E4                    	xor	ah, ah
+    97 00000096 BB[09000000]            	mov	ebx, printField	;; Puts pointer to printField in ebx
+    98 0000009B F635[10000000]          	div	BYTE[hundred]	;; Divides al by 100 to get 1st digit
+    99 000000A1 0430                    	add	al, '0'		;; Converts quotient to character
+   100 000000A3 8803                    	mov	[ebx], al	;; Moves character to first spot of printField
+   101 000000A5 43                      	inc	ebx		;; Moves pointer in ebx to next space
+   102 000000A6 66C1E808                	shr	ax, 8		;; Shifts ax so remainder is in al
+   103 000000AA F635[11000000]          	div	BYTE[ten]	;; Divides al by 10 to get 2nd digit
+   104 000000B0 0430                    	add	al, '0'		;; Converts quotient to character
+   105 000000B2 8803                    	mov	[ebx], al	;; Moves character to 2nd spot of printField
+   106 000000B4 80C430                  	add	ah, '0'		;; Converts remaining 3rd digit to character
+   107 000000B7 43                      	inc	ebx		;; Moves pointer in ebx to next space
+   108 000000B8 8823                    	mov	[ebx], ah	;; Moves character to 3rd spot of printField
+   109 000000BA 61                      	popa
+   110 000000BB C3                      	ret
+   111                                  
+   112                                  ;; Function for printing array of byte values, one per line
+   113                                  _printArray:
+   114 000000BC 60                      	pusha
+   115 000000BD BB[00000000]            	mov	ebx, nums
+   116 000000C2 B909000000              	mov	ecx, numslen
+   117                                  printArrayLoop:		        ;; Printing each value in array
+   118 000000C7 8B03                    	mov	eax, [ebx]	;; Setting al for _convNum call
+   119 000000C9 E8C5FFFFFF              	call	_convNum
+   120                                  	Print	printField, 3   ;; Printing converted value
+   121 000000CE 60                  <1>  pusha
+   122 000000CF B804000000          <1>  mov eax, 4
+   123 000000D4 BB01000000          <1>  mov ebx, 1
+   124 000000D9 B9[09000000]        <1>  mov ecx, %1
+   125 000000DE BA03000000          <1>  mov edx, %2
+   126 000000E3 CD80                <1>  int 80h
+   127 000000E5 61                  <1>  popa
+   128 000000E6 43                      	inc	ebx	        ;; Setting pointer to move to next val in array
+   129                                  	Print	ten, 1	        ;; Moving cursor to next line
+   130 000000E7 60                  <1>  pusha
+   131 000000E8 B804000000          <1>  mov eax, 4
+   132 000000ED BB01000000          <1>  mov ebx, 1
+   133 000000F2 B9[11000000]        <1>  mov ecx, %1
+   134 000000F7 BA01000000          <1>  mov edx, %2
+   135 000000FC CD80                <1>  int 80h
+   136 000000FE 61                  <1>  popa
+   137 000000FF E2C6                    	loop printArrayLoop
+   138 00000101 61                      	popa
+   139 00000102 C3                      	ret	
+   140                                  
+   141                                  ;; Function for sorting an array of byte values
+   142                                  _sort:
+   143 00000103 60                      	pusha
+   144                                  	;; Filling ecx w/ number of needed runs of value comparisons
+   145 00000104 B909000000              	mov	ecx, numslen
+   146                                  sortLoop:	;; Loop that runs one set of comparions/exchanges of values
+   147                                  		;; in array per loop
+   148 00000109 51                      	push	ecx		
+   149 0000010A BB[00000000]            	mov	ebx, nums	;; Storing pointer to array in ebx
+   150 0000010F B909000000              	mov	ecx, numslen	;; Storing size of array in ecx
+   151 00000114 49                      	dec	ecx		;; Dec ecx to not overshoot array in loop
+   152 00000115 31C0                    	xor	eax, eax
+   153 00000117 31D2                    	xor	edx, edx
+   154                                  sortVals:	;; Loop that compares each value to the next in the array
+   155                                  		;; and exchanges values if necessary
+   156 00000119 8A03                    	mov	al, [ebx]	;; Putting 'current' value into al
+   157 0000011B 8A5301                  	mov	dl, [ebx+1]	;; Putting 'next' value into dl
+   158                                  	;; Swapping al and dl if al>dl
+   159 0000011E 39D0                    	cmp	eax, edx
+   160 00000120 7202                    	jb	skipXchg	;; Unsigned comparison
+   161 00000122 86C2                    	xchg	al, dl
+   162                                  skipXchg:	
+   163 00000124 8803                    	mov	[ebx], al   ;;Placing smaller val into 'current' place in array
+   164 00000126 885301                  	mov	[ebx+1], dl ;;Placing larger val into 'next' place in array
+   165 00000129 43                      	inc	ebx	    ;; Inc ebx to point to next value in array
+   166 0000012A E2ED                    	loop	sortVals
+   167 0000012C 59                      	pop	ecx
+   168 0000012D E2DA                    	loop	sortLoop    ;; Running as many sets of comparisons as needed
+   169                                  	
+   170 0000012F 61                      	popa
+   171 00000130 C3                      	ret

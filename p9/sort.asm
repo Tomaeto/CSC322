@@ -17,7 +17,7 @@
 
 SECTION .data
 ; define data/variables here.  Think DB, DW, DD, DQ
-nums: 		db      100, 200, 5, 10, 0, 88, 22 ; Array to be sorted
+nums: 		db     255, 100, 200, 5, 10, 0, 88, 22, 64 ; Array to be sorted
 numslen:   	EQU     ($-nums)	  ; Length of array
 printField:	db	"   "	 	  ; Stores converted value
 clr             db 	1bh,'[2J'	  ; Clear screen string
@@ -91,14 +91,7 @@ printArrayLoop:		        ;; Printing each value in array
 _sort:
 	pusha
 	;; Filling ecx w/ number of needed runs of value comparisons
-	;; Logically,  [n*(n-1)]/2, where n is size of array
 	mov	ecx, numslen
-	dec	ecx
-	mov	eax, numslen
-	mul	ecx
-	mov	ecx, 2
-	div	ecx
-	mov	ecx, eax
 sortLoop:	;; Loop that runs one set of comparions/exchanges of values
 		;; in array per loop
 	push	ecx		
@@ -113,7 +106,7 @@ sortVals:	;; Loop that compares each value to the next in the array
 	mov	dl, [ebx+1]	;; Putting 'next' value into dl
 	;; Swapping al and dl if al>dl
 	cmp	eax, edx
-	jng	skipXchg
+	jb	skipXchg	;; Unsigned comparison
 	xchg	al, dl
 skipXchg:	
 	mov	[ebx], al   ;;Placing smaller val into 'current' place in array
