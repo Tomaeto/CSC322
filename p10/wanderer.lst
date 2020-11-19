@@ -1,0 +1,391 @@
+     1                                  ; Adrian Faircloth
+     2                                  ; 11/17/2020
+     3                                  ; Program 10: The Wanderer
+     4                                  ; Creates a closed region in which a message moves randomly
+     5                                  ; Works for message of any size that fits within region
+     6                                  
+     7                                  ;; Macro for printing
+     8                                  ;; Pass start address of string and size
+     9                                  %macro Print 2
+    10                                  	pusha
+    11                                  	mov	ecx, %1
+    12                                  	mov	edx, %2
+    13                                  	mov	eax, 4
+    14                                  	mov	ebx, 1
+    15                                  	int	80h
+    16                                  	popa
+    17                                  %endmacro
+    18                                  
+    19                                  ;; Macro for getting a random value from 0 to 2 based on rdtsc instruction
+    20                                  ;; Used in randomizing header character's position
+    21                                  ;; Randomized value placed in al register
+    22                                  %macro randVal 0
+    23                                  	rdtsc
+    24                                          ;; Setting ah and al to contain first and second bits from eax
+    25                                          mov     ah, al
+    26                                          and     al, 01  ;; Setting al to 0 or 1 based on first bit
+    27                                          shr     ah, 2   ;; Getting 2nd bit value into leftmost bit
+    28                                          and     ah, 01  ;; Setting ah to 0 or 1 based on first bit
+    29                                          add     al, ah  ;; Adding 1st and 2nd bit to get 0, 1, or 2
+    30                                  %endmacro
+    31                                  
+    32                                  ;; Data structure for each character
+    33                                  ;; Contains spaces for location and character data
+    34                                  STRUC	msgStruc
+    35 00000000 <res 00000002>          		RESB	2 ;; Space for esc'['
+    36 00000002 <res 00000002>          	.row:	RESB	2 ;; Space for 2-digit row number (characters)
+    37 00000004 <res 00000001>          		RESB	1 ;; Space for ';'
+    38 00000005 <res 00000002>          	.col:	RESB	2 ;; Space for 2-digit col number (characters)
+    39 00000007 <res 00000001>          		RESB	1 ;; Space for the 'H'
+    40 00000008 <res 00000001>          	.char:	RESB	1 ;; Space for the printed character
+    41                                  	.size:
+    42                                  ENDSTRUC	
+    43                                  	
+    44                                  SECTION .data
+    45                                  
+    46 00000000 1B5B324A                clr:	db	1bh, '[2J'	;; Clear screen string
+    47                                  ;; Region bounds
+    48 00000004 2A2A2A2A2A2A2A2A2A-     ends:	db	'****************************************'
+    49 0000000D 2A2A2A2A2A2A2A2A2A-
+    50 00000016 2A2A2A2A2A2A2A2A2A-
+    51 0000001F 2A2A2A2A2A2A2A2A2A-
+    52 00000028 2A2A2A2A           
+    53 0000002C 2A2020202020202020-     middle: db	"*                                      *"
+    54 00000035 202020202020202020-
+    55 0000003E 202020202020202020-
+    56 00000047 202020202020202020-
+    57 00000050 2020202A           
+    58 00000054 0A                      ten:	db	10	
+    59                                  
+    60                                  ;; Array of structs, formatted like print interrupt uses
+    61                                  ;; Contains the message "Snaking Message"
+    62 00000055 1B5B31353B31354853      message:	db	1bh, '[15;15HS'
+    63 0000005E 1B5B31353B3136486E      		db      1bh, '[15;16Hn'
+    64 00000067 1B5B31353B31374861      		db      1bh, '[15;17Ha'
+    65 00000070 1B5B31353B3138486B      		db	1bh, '[15;18Hk'
+    66 00000079 1B5B31353B31394869      		db	1bh, '[15;19Hi'
+    67 00000082 1B5B31353B3230486E      		db	1bh, '[15;20Hn'
+    68 0000008B 1B5B31353B32314867      		db	1bh, '[15;21Hg'
+    69 00000094 1B5B31353B32324820      		db	1bh, '[15;22H '
+    70 0000009D 1B5B31353B3233484D      		db	1bh, '[15;23HM'
+    71 000000A6 1B5B31353B32344865      		db	1bh, '[15;24He'
+    72 000000AF 1B5B31353B32354873      		db	1bh, '[15;25Hs'
+    73 000000B8 1B5B31353B32364873      		db	1bh, '[15;26Hs'
+    74 000000C1 1B5B31353B32374861      		db	1bh, '[15;27Ha'
+    75 000000CA 1B5B31353B32384867      		db	1bh, '[15;28Hg'
+    76 000000D3 1B5B31353B32394865      		db	1bh, '[15;29He'
+    77 000000DC 1B5B31353B33304820      		db	1bh, '[15;30H '
+    78                                  msgLen:	EQU	16	;; Number of characters in message
+    79 000000E5 000000000065CD1D        pause:	dd	0, 500000000 ;; Seconds, nanoseconds
+    80                                  ; Set cursor position control characters
+    81 000000ED 1B5B                    pos     db      1bh, '['
+    82 000000EF 3030                    row     db      '00'
+    83 000000F1 3B                              db      ';'
+    84 000000F2 3030                    col     db      '00'
+    85 000000F4 48                              db      'H'
+    86                                  
+    87                                  SECTION .bss
+    88                                  
+    89                                  SECTION .text
+    90                                  global _main, _makeRegion, _displayMsg, _adjustMessage, _sleep, _setCursor
+    91                                  _main:
+    92                                  
+    93                                  	Print	clr, 4	
+    94 00000000 60                  <1>  pusha
+    95 00000001 B9[00000000]        <1>  mov ecx, %1
+    96 00000006 BA04000000          <1>  mov edx, %2
+    97 0000000B B804000000          <1>  mov eax, 4
+    98 00000010 BB01000000          <1>  mov ebx, 1
+    99 00000015 CD80                <1>  int 80h
+   100 00000017 61                  <1>  popa
+   101                                  	;; Setting cursor so region prints from first row and col on screen
+   102 00000018 66B80000                	mov	ax, 0
+   103 0000001C E80D020000              	call	_setCursor
+   104 00000021 E81D000000              	call	_makeRegion
+   105                                  
+   106                                  wander:  ;; infinite loop for wandering message
+   107                                  loopBreak:
+   108 00000026 E898000000              	call 	_displayMsg	
+   109 0000002B E8BC000000              	call	_adjustMessage	
+   110 00000030 E8E7010000              	call	_sleep
+   111 00000035 EBEF                    	jmp	wander
+   112                                  
+   113                                  ; Normal termination code
+   114 00000037 B801000000              mov eax, 1
+   115 0000003C BB00000000              mov ebx, 0
+   116 00000041 CD80                    int 80h
+   117                                  ;;;;;;;;;;;;;;;;;;;;;;;;; END OF MAIN ;;;;;;;;;;;;;;;;;;;;;;;;;
+   118                                  
+   119                                  ;; Function for making closed region
+   120                                  ;; Creates a 20x40 region
+   121                                  _makeRegion:
+   122                                  	Print	ends, 40
+   123 00000043 60                  <1>  pusha
+   124 00000044 B9[04000000]        <1>  mov ecx, %1
+   125 00000049 BA28000000          <1>  mov edx, %2
+   126 0000004E B804000000          <1>  mov eax, 4
+   127 00000053 BB01000000          <1>  mov ebx, 1
+   128 00000058 CD80                <1>  int 80h
+   129 0000005A 61                  <1>  popa
+   130                                  	Print	ten, 1	
+   131 0000005B 60                  <1>  pusha
+   132 0000005C B9[54000000]        <1>  mov ecx, %1
+   133 00000061 BA01000000          <1>  mov edx, %2
+   134 00000066 B804000000          <1>  mov eax, 4
+   135 0000006B BB01000000          <1>  mov ebx, 1
+   136 00000070 CD80                <1>  int 80h
+   137 00000072 61                  <1>  popa
+   138 00000073 B912000000              	mov	ecx, 18
+   139                                  printMid: ;;Loop to create middle sections of region
+   140                                  	Print	middle, 40
+   141 00000078 60                  <1>  pusha
+   142 00000079 B9[2C000000]        <1>  mov ecx, %1
+   143 0000007E BA28000000          <1>  mov edx, %2
+   144 00000083 B804000000          <1>  mov eax, 4
+   145 00000088 BB01000000          <1>  mov ebx, 1
+   146 0000008D CD80                <1>  int 80h
+   147 0000008F 61                  <1>  popa
+   148                                  	Print	ten, 1
+   149 00000090 60                  <1>  pusha
+   150 00000091 B9[54000000]        <1>  mov ecx, %1
+   151 00000096 BA01000000          <1>  mov edx, %2
+   152 0000009B B804000000          <1>  mov eax, 4
+   153 000000A0 BB01000000          <1>  mov ebx, 1
+   154 000000A5 CD80                <1>  int 80h
+   155 000000A7 61                  <1>  popa
+   156 000000A8 E2CE                    	loop	printMid
+   157                                  	Print	ends, 40
+   158 000000AA 60                  <1>  pusha
+   159 000000AB B9[04000000]        <1>  mov ecx, %1
+   160 000000B0 BA28000000          <1>  mov edx, %2
+   161 000000B5 B804000000          <1>  mov eax, 4
+   162 000000BA BB01000000          <1>  mov ebx, 1
+   163 000000BF CD80                <1>  int 80h
+   164 000000C1 61                  <1>  popa
+   165 000000C2 C3                      	ret
+   166                                  	
+   167                                  ;; Function for displaying message within region
+   168                                  _displayMsg:
+   169 000000C3 60                      	pusha
+   170 000000C4 B8[DC000000]            	mov	eax, message+(msgStruc.size*(msgLen-1))
+   171 000000C9 B910000000              	mov	ecx, msgLen
+   172                                  displayChars: ;;Loop for printing each character
+   173 000000CE 51                      	push	ecx
+   174                                  	Print	eax, 9
+   175 000000CF 60                  <1>  pusha
+   176 000000D0 89C1                <1>  mov ecx, %1
+   177 000000D2 BA09000000          <1>  mov edx, %2
+   178 000000D7 B804000000          <1>  mov eax, 4
+   179 000000DC BB01000000          <1>  mov ebx, 1
+   180 000000E1 CD80                <1>  int 80h
+   181 000000E3 61                  <1>  popa
+   182 000000E4 83E809                  	sub	eax, msgStruc.size ;; Point to previous character
+   183 000000E7 59                      	pop	ecx
+   184 000000E8 E2E4                    	loop displayChars
+   185 000000EA 61                      	popa
+   186 000000EB C3                      	ret
+   187                                  
+   188                                  ;; Function for adjusting location parms for each character
+   189                                  ;; Shifts location parms down to next char & randomly chooses head's next loc
+   190                                  ;; If head is about to enter boundary, wraps around to other side of region
+   191                                  ;; All comparisons done w/ characters as data is saved that way in Struct
+   192                                  _adjustMessage:
+   193 000000EC 60                      	pusha
+   194                                  
+   195                                  ;; Shifting first digit of row data
+   196 000000ED BB[55000000]            	mov	ebx, message	;; Pointer to array
+   197 000000F2 B90F000000              	mov	ecx, msgLen-1
+   198 000000F7 8A15[58000000]          	mov	dl, [message+msgStruc.row+1] ;;Get 1st char's row to start loop
+   199                                  shiftRow:
+   200 000000FD 88D0                    	mov	al, dl ;; Put current char's row into al
+   201 000000FF 8A530C                  	mov	dl, [ebx+msgStruc.size+msgStruc.row+1] ;; Gew row of next char
+   202 00000102 83C309                  	add	ebx, msgStruc.size
+   203 00000105 884303                  	mov	[ebx+msgStruc.row+1], al ;; Put current char's row into next
+   204 00000108 E2F3                    	loop	shiftRow
+   205                                  
+   206                                  ;;Shifting 2nd digit of row data
+   207 0000010A BB[55000000]            	mov	ebx, message
+   208 0000010F B90F000000              	mov	ecx, msgLen-1
+   209 00000114 8A15[57000000]          	mov	dl, [message+msgStruc.row] 
+   210                                  shiftRow2nd:
+   211 0000011A 88D0                    	mov	al, dl
+   212 0000011C 8A530B                  	mov	dl, [ebx+msgStruc.size+msgStruc.row]
+   213 0000011F 83C309                  	add	ebx, msgStruc.size
+   214 00000122 884302                  	mov	[ebx+msgStruc.row], al
+   215 00000125 E2F3                    	loop	shiftRow2nd
+   216                                  	
+   217                                  ;; Shifting first digit of column data
+   218 00000127 BB[55000000]            	mov	ebx, message
+   219 0000012C B90F000000              	mov	ecx, msgLen-1
+   220 00000131 8A5306                  	mov	dl, [ebx+msgStruc.col+1] ;; Get 1st char's col to start loop
+   221                                  shiftCol:
+   222 00000134 88D0                    	mov	al, dl ;;Put current char's row into al
+   223 00000136 8A530F                  	mov	dl, [ebx+msgStruc.size+msgStruc.col+1] ;; Get col of next char
+   224 00000139 83C309                  	add	ebx, msgStruc.size
+   225 0000013C 884306                  	mov	[ebx+msgStruc.col+1], al ;; Put current char's row into next
+   226 0000013F E2F3                    	loop	shiftCol
+   227                                  
+   228                                  ;; Shifting second digit of column data
+   229 00000141 BB[55000000]            	mov	ebx, message
+   230 00000146 B90F000000              	mov	ecx, msgLen-1
+   231 0000014B 8A5305                  	mov	dl, [ebx+msgStruc.col]
+   232                                  shiftCol2nd:
+   233 0000014E 88D0                    	mov	al, dl
+   234 00000150 8A530E                  	mov	dl, [ebx+msgStruc.size+msgStruc.col]
+   235 00000153 83C309                  	add	ebx, msgStruc.size
+   236 00000156 884305                  	mov	[ebx+msgStruc.col], al
+   237 00000159 E2F3                    	loop	shiftCol2nd
+   238                                  
+   239                                  ;; Randomizing 1st char's next row
+   240                                  	randVal
+   241 0000015B 0F31                <1>  rdtsc
+   242                              <1> 
+   243 0000015D 88C4                <1>  mov ah, al
+   244 0000015F 2401                <1>  and al, 01
+   245 00000161 C0EC02              <1>  shr ah, 2
+   246 00000164 80E401              <1>  and ah, 01
+   247 00000167 00E0                <1>  add al, ah
+   248                                  ;	;; if sum=2, set value to -1
+   249 00000169 3C02                    	cmp	al, 2
+   250 0000016B 7502                    	jne	notNegRow
+   251 0000016D B0FF                    	mov	al, -1
+   252                                  notNegRow:
+   253 0000016F BB[55000000]            	mov	ebx, message ;; Pointer to first struct in array
+   254                                  	;; If first digit of row data >= 10, incrementing second digit
+   255                                  	;; Done by checking if 1st digit is 9 and if digit to be added = 1
+   256 00000174 807B0339                	cmp	BYTE[ebx+msgStruc.row+1], '9' 
+   257 00000178 7C0C                    	jl	skipInc
+   258 0000017A 3C01                    	cmp	al, 1
+   259 0000017C 7508                    	jne	skipInc
+   260                                  	;; If true, first digit set to 0 and second incremented
+   261                                  	;; subtracting 10 is offset by later adding 1 from al
+   262 0000017E 806B030A                	sub	BYTE[ebx+msgStruc.row+1], 10
+   263 00000182 80430201                	add	BYTE[ebx+msgStruc.row], 1
+   264                                  skipInc:
+   265                                  	;; If first digit of row data < 0, decrementing second digit
+   266                                  	;; Done by checking if 1st digit is 0 and if digit to be added = -1
+   267 00000186 807B0330                	cmp	BYTE[ebx+msgStruc.row+1], '0'
+   268 0000018A 7F0C                    	jg	skipDec
+   269 0000018C 3CFF                    	cmp	al, -1
+   270 0000018E 7508                    	jne	skipDec
+   271                                  	;; If true, first digit set to 9 and second decremented
+   272                                  	;; Adding 10 is offset by later adding -1 from al
+   273 00000190 8043030A                	add	BYTE[ebx+msgStruc.row+1], 10
+   274 00000194 806B0201                	sub	BYTE[ebx+msgStruc.row], 1
+   275                                  skipDec:
+   276 00000198 004303                  	add	[ebx+msgStruc.row+1], al ;; Adding random value to row (-1,0,1)
+   277                                  
+   278                                  ;; Wrapping around if char going to enter region bounds
+   279 0000019B 807B0232                	cmp	BYTE[ebx+msgStruc.row], '2' ;;check if row data >= 20
+   280 0000019F 7C08                    	jl	notBotBound
+   281                                  	;; if row data >= 20, set row to 2
+   282 000001A1 C6430230                	mov	BYTE[ebx+msgStruc.row], '0'
+   283 000001A5 C6430332                	mov	BYTE[ebx+msgStruc.row+1], '2'
+   284                                  notBotBound:
+   285 000001A9 807B0230                	cmp	BYTE[ebx+msgStruc.row], '0' ;; check if row data below 10
+   286 000001AD 750E                    	jne	notTopBound
+   287 000001AF 807B0331                	cmp	BYTE[ebx+msgStruc.row+1], '1' ;; check if row data = 1
+   288 000001B3 7508                    	jne	notTopBound
+   289                                  	;; if row data = 1, set row to 19
+   290 000001B5 C6430231                	mov	BYTE[ebx+msgStruc.row], '1'
+   291 000001B9 C6430339                	mov	BYTE[ebx+msgStruc.row+1], '9'
+   292                                  notTopBound:
+   293                                  
+   294                                  ;; Randomizing 1st char's next column
+   295                                  	randVal
+   296 000001BD 0F31                <1>  rdtsc
+   297                              <1> 
+   298 000001BF 88C4                <1>  mov ah, al
+   299 000001C1 2401                <1>  and al, 01
+   300 000001C3 C0EC02              <1>  shr ah, 2
+   301 000001C6 80E401              <1>  and ah, 01
+   302 000001C9 00E0                <1>  add al, ah
+   303                                  	;; if sum=2, set value to -1
+   304 000001CB 3C02                    	cmp	al, 2
+   305 000001CD 7502                    	jne	notNegCol
+   306 000001CF B0FF                    	mov	al, -1
+   307                                  notNegCol:
+   308                                  	;; If first digit of col data >=10, incrementing second digit
+   309                                  	;; Done by checking if 1st digit = 9  and if value to be added = 1
+   310 000001D1 807B0639                	cmp	BYTE[ebx+msgStruc.col+1], '9' 
+   311 000001D5 750C                    	jne	skipIncCol
+   312 000001D7 3C01                    	cmp	al, 1
+   313 000001D9 7508                    	jne	skipIncCol
+   314                                  	;;If true first digit set to 9 and 2nd digit incremented
+   315                                  	;; Subtracting 10 is offset by adding 1 from al
+   316 000001DB 806B060A                	sub	BYTE[ebx+msgStruc.col+1], 10
+   317 000001DF 80430501                	add	BYTE[ebx+msgStruc.col], 1
+   318                                  skipIncCol:
+   319                                  	;; If first digit of col data < 0, decrementing second digit
+   320                                  	;; Done by checking if 1st digit = 0  and if value to be added = -1
+   321 000001E3 807B0630                	cmp	BYTE[ebx+msgStruc.col+1], '0'
+   322 000001E7 750C                    	jne	skipDecCol
+   323 000001E9 3CFF                    	cmp	al, -1
+   324 000001EB 7508                    	jne	skipDecCol
+   325                                  	;; If true, 1st digit set to 9 and 2nd digit decremented
+   326                                  	;; Adding 10 to 1st digit offset by adding -1 from al
+   327 000001ED 8043060A                	add	BYTE[ebx+msgStruc.col+1], 10
+   328 000001F1 806B0501                	sub	BYTE[ebx+msgStruc.col], 1
+   329                                  skipDecCol:
+   330 000001F5 004306                  	add	[ebx+msgStruc.col+1], al ;; adding random value to col (-1,0,1)
+   331                                  
+   332                                  ;; Wrapping around if char going to enter region bounds
+   333 000001F8 807B0534                	cmp	BYTE[ebx+msgStruc.col], '4' ;; Check if col data = 40
+   334 000001FC 7508                    	jne	notRightBound
+   335                                  	;;If col data =40, set col to 2
+   336 000001FE C6430530                	mov	BYTE[ebx+msgStruc.col],'0'
+   337 00000202 C6430632                	mov	BYTE[ebx+msgStruc.col+1], '2' 
+   338                                  notRightBound:
+   339 00000206 807B0530                	cmp	BYTE[ebx+msgStruc.col], '0' ;; Check if col is below 10
+   340 0000020A 750E                    	jne	notLeftBound
+   341 0000020C 807B0631                	cmp	BYTE[ebx+msgStruc.col+1], '1' ;; Check if col = 1
+   342 00000210 7F08                    	jg	notLeftBound
+   343                                  	;;If col data = 1, set col to 39
+   344 00000212 C6430533                	mov	BYTE[ebx+msgStruc.col], '3'
+   345 00000216 C6430639                	mov	BYTE[ebx+msgStruc.col+1], '9'
+   346                                  notLeftBound:
+   347 0000021A 61                      	popa
+   348 0000021B C3                      	ret
+   349                                  
+   350                                  ;; Function for sleeping for 1/2 second
+   351                                  _sleep:
+   352 0000021C B8A2000000              	mov	eax, 162
+   353 00000221 BB[E5000000]            	mov	ebx, pause
+   354 00000226 B900000000              	mov	ecx, 0
+   355 0000022B CD80                    	int 80h
+   356 0000022D C3                      	ret
+   357                                  
+   358                                  ;; Function for setting cursor position on screen
+   359                                  ;; Expects row in ah and col in al, only works for 1- or 2-digit values
+   360                                  _setCursor:
+   361 0000022E 60                              pusha
+   362                                  ;; save original to process col later
+   363 0000022F 50                              push    eax
+   364                                  ;; process row
+   365 00000230 66C1E808                        shr     ax,8    ;; shift row to right
+   366 00000234 B30A                            mov     bl,10
+   367 00000236 F6F3                            div     bl      ;; puts ax/10 in al, remainder in ah
+   368 00000238 80C430                          add     ah,'0'
+   369 0000023B 0430                            add     al,'0'
+   370 0000023D A2[EF000000]                    mov     BYTE [row],al
+   371 00000242 8825[F0000000]                  mov     BYTE [row+1],ah
+   372                                  ;; process col
+   373 00000248 58                              pop     eax     ;; restore original parms
+   374 00000249 6625FF00                        and     ax,0FFh ;; erase row, leave col
+   375 0000024D B30A                            mov     bl,10
+   376 0000024F F6F3                            div     bl      ;; puts ax/10 in al, remainder in ah
+   377 00000251 80C430                          add     ah,'0'
+   378 00000254 0430                            add     al,'0'
+   379 00000256 A2[F2000000]                    mov     BYTE [col],al
+   380 0000025B 8825[F3000000]                  mov     BYTE [col+1],ah
+   381                                  	;; Print cursor control code
+   382                                  	Print	pos, 8
+   383 00000261 60                  <1>  pusha
+   384 00000262 B9[ED000000]        <1>  mov ecx, %1
+   385 00000267 BA08000000          <1>  mov edx, %2
+   386 0000026C B804000000          <1>  mov eax, 4
+   387 00000271 BB01000000          <1>  mov ebx, 1
+   388 00000276 CD80                <1>  int 80h
+   389 00000278 61                  <1>  popa
+   390 00000279 61                      	popa
+   391 0000027A C3                      	ret
